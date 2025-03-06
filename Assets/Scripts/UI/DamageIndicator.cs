@@ -9,16 +9,22 @@ public class DamageIndicator : MonoBehaviour
     [SerializeField] private Image image;
     [SerializeField] private float flashSpeed;
 
-    private Vignette vignette;
+    // private Vignette vignette;
+    // private ChromaticAberration chromaticAberration;
 
     private Coroutine coroutine;
 
     private void Start()
     {
-        if (!volume.profile.TryGetSettings(out vignette))
-        {
-            vignette = volume.profile.AddSettings<Vignette>();
-        }
+        // if (!volume.profile.TryGetSettings(out vignette))
+        // {
+        //     vignette = volume.profile.AddSettings<Vignette>();
+        // }
+
+        // if (!volume.profile.TryGetSettings(out chromaticAberration))
+        // {
+        //     chromaticAberration = volume.profile.AddSettings<ChromaticAberration>();
+        // }
         
         CharacterManager.Instance.Player.Condition.OnTakeDamage += Flash;
     }
@@ -52,8 +58,10 @@ public class DamageIndicator : MonoBehaviour
                 image.color = new Color(1f, 100f / 255f, 100f / 255f, a);
             }
             
-            vignette.intensity.value = 0.2f + a;
-            vignette.color.value = new Color(3f * startAlpha, 0f, 0f);
+            // vignette.intensity.value = 0.2f + a;
+            // vignette.color.value = new Color(3f * a, 0f, 0f);
+
+            volume.weight = 3.3f * a;
 
             yield return null;
         }
@@ -63,7 +71,9 @@ public class DamageIndicator : MonoBehaviour
             image.enabled = false;
         }
 
-        vignette.intensity.value = 0.2f;
-        vignette.color.value = new Color(0f, 0f, 0f);
+        // vignette.intensity.value = 0.2f;
+        // vignette.color.value = new Color(0f, 0f, 0f);
+
+        volume.weight = 0f;
     }
 }

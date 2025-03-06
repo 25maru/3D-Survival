@@ -12,8 +12,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Look")]
     [SerializeField] private Transform cameraContainer;
-    [SerializeField] private float minXLook;
-    [SerializeField] private float maxXLook;
+    [SerializeField] private Vector2 xLook;
     [SerializeField] private float lookSensitivity;
     private Vector2 mouseDelta;
     private float camCurXRot;
@@ -83,7 +82,7 @@ public class PlayerController : MonoBehaviour
     void CameraLook()
     {
         camCurXRot += mouseDelta.y * lookSensitivity;
-        camCurXRot = Mathf.Clamp(camCurXRot, minXLook, maxXLook);
+        camCurXRot = Mathf.Clamp(camCurXRot, xLook.x, xLook.y);
         cameraContainer.localEulerAngles = new Vector3(-camCurXRot, 0, 0);
 
         transform.eulerAngles += new Vector3(0, mouseDelta.x * lookSensitivity, 0);
