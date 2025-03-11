@@ -2,31 +2,21 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Rendering.PostProcessing;
+using DG.Tweening;
 
 public class DamageIndicator : MonoBehaviour
 {
     [SerializeField] private PostProcessVolume volume;
-    [SerializeField] private Image image;
     [SerializeField] private float flashSpeed;
 
-    // private Vignette vignette;
-    // private ChromaticAberration chromaticAberration;
-
+    private PlayerCondition playerCondition;
     private Coroutine coroutine;
 
     private void Start()
     {
-        // if (!volume.profile.TryGetSettings(out vignette))
-        // {
-        //     vignette = volume.profile.AddSettings<Vignette>();
-        // }
-
-        // if (!volume.profile.TryGetSettings(out chromaticAberration))
-        // {
-        //     chromaticAberration = volume.profile.AddSettings<ChromaticAberration>();
-        // }
-        
-        CharacterManager.Instance.Player.Condition.OnTakeDamage += Flash;
+        playerCondition = CharacterManager.Instance.Player.Condition;
+        playerCondition.OnTakeDamage += Flash;
+        playerCondition.OnDeath += HandleDeath;
     }
 
     public void Flash()
@@ -35,12 +25,7 @@ public class DamageIndicator : MonoBehaviour
         {
             StopCoroutine(coroutine);
         }
-
-        if (image != null)
-        {
-            image.enabled = true;
-            image.color = new Color(1f, 105f / 255f, 105f / 255f);
-        }
+        
         coroutine = StartCoroutine(FadeAway());
     }
 
@@ -53,27 +38,25 @@ public class DamageIndicator : MonoBehaviour
         {
             a -= startAlpha / flashSpeed * Time.deltaTime;
 
-            if (image != null)
-            {
-                image.color = new Color(1f, 100f / 255f, 100f / 255f, a);
-            }
-            
-            // vignette.intensity.value = 0.2f + a;
-            // vignette.color.value = new Color(3f * a, 0f, 0f);
+            var health = playerCondition.UICondition.Health;
+            var percentage = health.GetPercentage();
+            var weight = (1f - percentage) / 2f + 0.5f;
 
-            volume.weight = 3.3f * a;
+            volume.weight = 3.3f * weight * a;
 
             yield return null;
         }
 
-        if (image != null)
+        volume.weight = 0f;
+    }
+
+    public void HandleDeath()
+    {
+        if (coroutine != null)
         {
-            image.enabled = false;
+            StopCoroutine(coroutine);
         }
 
-        // vignette.intensity.value = 0.2f;
-        // vignette.color.value = new Color(0f, 0f, 0f);
-
-        volume.weight = 0f;
+        volume.weight = 1f;
     }
 }
