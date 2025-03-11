@@ -26,6 +26,8 @@ public class UIInventory : MonoBehaviour
     private PlayerController controller;
     private PlayerCondition condition;
 
+    public ItemData ItemData => selectedItem.Item;
+
     private void Start()
     {
         controller = CharacterManager.Instance.Player.Controller;
