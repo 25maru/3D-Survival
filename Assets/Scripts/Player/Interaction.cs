@@ -21,6 +21,8 @@ public class Interaction : MonoBehaviour
     private CanvasGroup promptTextCanvas;
     private Camera cam;
 
+    public float CheckDistanceBonus { get; set;}
+
     private void Start()
     {
         promptTextRect = promptText.GetComponent<RectTransform>();
@@ -39,7 +41,7 @@ public class Interaction : MonoBehaviour
 
             Ray ray = cam.ScreenPointToRay(new Vector3(Screen.width / 2, Screen.height / 2));
 
-            if (Physics.Raycast(ray, out RaycastHit hit, maxCheckDistance, layerMask))
+            if (Physics.Raycast(ray, out RaycastHit hit, maxCheckDistance + CheckDistanceBonus, layerMask))
             {
                 if (hit.collider.gameObject != curInteractGameObject)
                 {

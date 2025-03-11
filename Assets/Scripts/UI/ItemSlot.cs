@@ -17,7 +17,7 @@ public class ItemSlot : MonoBehaviour
 
     public UIInventory Inventory { get; set; }
     public ItemData Item { get; set; }
-    public bool Equipped { get; set; }
+    public bool Equipped;
     public int Quantity { get; set; }
     public int Index { get; set; }
 

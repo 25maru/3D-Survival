@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cinemachine;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -18,6 +19,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private CinemachineBrain mainCam;
     [SerializeField] private List<CinemachineVirtualCamera> vCams;
     [SerializeField] private Transform cameraContainer;
+    [SerializeField] private GameObject hat;
     [SerializeField] private Vector2 xLook;
     [SerializeField] private float lookSensitivity;
 
@@ -25,10 +27,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Animator animator;
 
     private Rigidbody rb;
+    private Equipment equipment;
+    private Interaction interaction;
     private PlayerCondition condition;
     private Condition stamina;
     private Vector2 movementInput;
     private Vector2 mouseDelta;
+    private Tween delayedCall;
     private float camCurXRot;
     private float animationSpeed;
     private bool isSprinting;
@@ -38,11 +43,13 @@ public class PlayerController : MonoBehaviour
     private const float JumpCooldown = 0.15f;
     private float jumpCooldownTimer;
 
-    private bool canLook = true;
+    public bool CanLook { get; private set; } = true;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        equipment = GetComponent<Equipment>();
+        interaction = GetComponent<Interaction>();
     }
 
     private void Start()
@@ -53,6 +60,8 @@ public class PlayerController : MonoBehaviour
 
         condition = CharacterManager.Instance.Player.Condition;
         stamina = condition.UICondition.Stamina;
+
+        hat.SetActive(false);
     }
 
     private void Update()
@@ -80,8 +89,11 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            canLook = !canLook;
+            CanLook = !CanLook;
         }
+
+        float targetWeight = (equipment.CurEquip != null) ? 1f : 0f;
+        ChangeLayerWeight(targetWeight);
     }
 
     private void FixedUpdate()
@@ -91,10 +103,18 @@ public class PlayerController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (canLook)
+        if (CanLook)
         {
             HandleCameraLook();
         }
+    }
+
+    private void ChangeLayerWeight(float weight)
+    {
+        float currentWeight = animator.GetLayerWeight(1);
+
+        DOTween.To(() => currentWeight, currentWeight => animator.SetLayerWeight(1, currentWeight), weight, 0.5f)
+            .SetEase(Ease.OutCubic);
     }
 
     private void HandleMovement()
@@ -127,7 +147,7 @@ public class PlayerController : MonoBehaviour
 
     private void HandleCameraLook()
     {
-        if (!canLook) return;
+        if (!CanLook) return;
 
         transform.Rotate(lookSensitivity * mouseDelta.x * Vector3.up);
         camCurXRot -= mouseDelta.y * lookSensitivity;
@@ -180,6 +200,20 @@ public class PlayerController : MonoBehaviour
             camIndex = (camIndex + 1) % vCams.Count;
 
             vCams[camIndex].Priority = 10;
+
+            Cinemachine3rdPersonFollow cinemachine3rdPersonFollow = vCams[camIndex].GetCinemachineComponent<Cinemachine3rdPersonFollow>();
+
+            if (cinemachine3rdPersonFollow != null)
+            {
+                delayedCall.Kill();
+                hat.SetActive(true);
+                interaction.CheckDistanceBonus = cinemachine3rdPersonFollow.CameraDistance;
+            }
+            else
+            {
+                delayedCall = DOVirtual.DelayedCall(mainCam.m_DefaultBlend.BlendTime, () => hat.SetActive(false));
+                interaction.CheckDistanceBonus = 0f;
+            }
         }
     }
 
@@ -196,7 +230,7 @@ public class PlayerController : MonoBehaviour
     {
         bool toggle = Cursor.lockState == CursorLockMode.Locked;
         Cursor.lockState = toggle ? CursorLockMode.None : CursorLockMode.Locked;
-        canLook = !toggle;
+        CanLook = !toggle;
     }
 
     private bool CheckGrounded()

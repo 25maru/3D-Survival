@@ -8,16 +8,13 @@ public class Player : MonoBehaviour
     [SerializeField] private PlayerController controller;
     [SerializeField] private PlayerCondition condition;
     [SerializeField] private Transform dropPosition;
-    [SerializeField] private ItemData itemData;
+    [SerializeField] private Equipment equipment;
 
     public PlayerController Controller => controller;
     public PlayerCondition Condition => condition;
     public Transform DropPosition => dropPosition;
-    public ItemData ItemData
-    {
-        get => itemData;
-        set => itemData = value;
-    }
+    public Equipment Equipment => equipment;
+    public ItemData ItemData { get; set; }
 
     private void Awake()
     {

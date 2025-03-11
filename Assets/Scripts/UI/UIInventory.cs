@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 public class UIInventory : MonoBehaviour
 {
@@ -12,8 +12,10 @@ public class UIInventory : MonoBehaviour
 
     [Header("Selected Item")]
     [SerializeField] private TextMeshProUGUI selectedItemText;
+
     private ItemSlot selectedItem;
     private int selectedItemIndex;
+    // private bool firstScrollSkipped;
     private bool canUse;
     private bool canEquip;
     private bool canUnEquip;
@@ -53,29 +55,16 @@ public class UIInventory : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.Alpha1 + i))
             {
                 selectedItemIndex = i;
+                //SelectItem(selectedItemIndex);
             }
         }
 
-        float scrollInput = Input.mouseScrollDelta.y;
-        if (scrollInput > 0)
-        {
-            selectedItemIndex--;
-        }
-        else if (scrollInput < 0)
-        {
-            selectedItemIndex++;
-        }
-
-        if (selectedItemIndex < 0)
-        {
-            selectedItemIndex = 0;
-        }
-        if (selectedItemIndex > Mathf.Min(slots.Length - 1, 9))
-        {
-            selectedItemIndex = Mathf.Min(slots.Length - 1, 9);
-
-        }
         SelectItem(selectedItemIndex);
+
+        // if (EventSystem.current.currentSelectedGameObject == null)
+        // {
+        //     firstScrollSkipped = false;
+        // }
     }
 
     private void ClearSelectedItemWindow()
@@ -170,6 +159,8 @@ public class UIInventory : MonoBehaviour
     // ItemSlot 스크립트 먼저 수정
     public void SelectItem(int index)
     {
+        // if (slots[index] == selectedItem && EventSystem.current.currentSelectedGameObject != null) return;
+
         selectedItem = slots[index];
         selectedItemIndex = index;
 
@@ -194,32 +185,112 @@ public class UIInventory : MonoBehaviour
         canDrop = true;
     }
 
-    public void OnUseButton()
-    {
-        if (selectedItem.Item.type == ItemType.Consumable)
-        {
-            for (int i = 0; i < selectedItem.Item.consumables.Length; i++)
-            {
-                switch (selectedItem.Item.consumables[i].type)
-                {
-                    case ConsumableType.Health:
-                        condition.Heal(selectedItem.Item.consumables[i].value);
-                        break;
-                    case ConsumableType.SpeedBoost:
-                        condition.ApplySpeedBoost(selectedItem.Item.consumables[i].value, selectedItem.Item.consumables[i].duration);
-                        break;
-                }
-            }
 
+#region Input
+
+    /// <summary>
+    /// 아이템 선택 [마우스 휠]
+    /// </summary>
+    /// <param name="context"></param>
+    public void OnScrollInput(InputAction.CallbackContext context)
+    {
+        float scrollInput = context.ReadValue<float>();
+        
+        // if (!firstScrollSkipped)
+        // {
+        //     SelectItem(selectedItemIndex);
+        //     firstScrollSkipped = true;
+        //     return;
+        // }
+
+        if (scrollInput > 0)
+        {
+            selectedItemIndex--;
+        }
+        else if (scrollInput < 0)
+        {
+            selectedItemIndex++;
+        }
+
+        if (selectedItemIndex < 0)
+        {
+            selectedItemIndex = Mathf.Min(slots.Length - 1, 8);
+        }
+        else if (selectedItemIndex > Mathf.Min(slots.Length - 1, 8))
+        {
+            selectedItemIndex = 0;
+        }
+        selectedItemIndex = Mathf.Clamp(selectedItemIndex, 0, Mathf.Min(slots.Length - 1, 9));
+
+        // SelectItem(selectedItemIndex);
+    }
+
+    /// <summary>
+    /// 아이템 버리기 [Q]
+    /// </summary>
+    /// <param name="context"></param>
+    public void OnDropInput(InputAction.CallbackContext context)
+    {
+        if (context.phase == InputActionPhase.Performed && canDrop)
+        {
+            ThrowItem(selectedItem.Item);
             RemoveSelctedItem();
         }
     }
 
-    public void OnDropButton()
+    /// <summary>
+    /// 아이템 사용 [F]
+    /// </summary>
+    /// <param name="context"></param>
+    public void OnUseInput(InputAction.CallbackContext context)
     {
-        ThrowItem(selectedItem.Item);
-        RemoveSelctedItem();
+        if (context.phase == InputActionPhase.Performed)
+        {
+            // 소비 아이템 -> 사용
+            if (canUse)
+            {
+                for (int i = 0; i < selectedItem.Item.consumables.Length; i++)
+                {
+                    switch (selectedItem.Item.consumables[i].type)
+                    {
+                        case ConsumableType.Health:
+                            condition.Heal(selectedItem.Item.consumables[i].value);
+                            break;
+                        case ConsumableType.SpeedBoost:
+                            condition.ApplySpeedBoost(selectedItem.Item.consumables[i].value, selectedItem.Item.consumables[i].duration);
+                            break;
+                    }
+                }
+
+                RemoveSelctedItem();
+            }
+
+            // 장비 아이템 -> 장착
+            if (canEquip)
+            {
+                if (slots[curEquipIndex].Equipped)
+                {
+                    UnEquip(curEquipIndex);
+                }
+
+                slots[selectedItemIndex].Equipped = true;
+                curEquipIndex = selectedItemIndex;
+                CharacterManager.Instance.Player.Equipment.EquipNew(selectedItem.Item);
+                UpdateUI();
+
+                // SelectItem(selectedItemIndex);
+            }
+
+            // 장비 아이템 -> 장착해제
+            if (canUnEquip)
+            {
+                UnEquip(selectedItemIndex);
+            }
+        }
     }
+    
+#endregion
+
 
     private void RemoveSelctedItem()
     {
@@ -229,7 +300,7 @@ public class UIInventory : MonoBehaviour
         {
             if (slots[selectedItemIndex].Equipped)
             {
-                // UnEquip(selectedItemIndex);
+                UnEquip(selectedItemIndex);
             }
 
             selectedItem.Item = null;
@@ -237,6 +308,18 @@ public class UIInventory : MonoBehaviour
         }
 
         UpdateUI();
+    }
+
+    private void UnEquip(int index)
+    {
+        slots[index].Equipped = false;
+        CharacterManager.Instance.Player.Equipment.UnEquip();
+        UpdateUI();
+
+        // if (selectedItemIndex == index)
+        // {
+        //     SelectItem(selectedItemIndex);
+        // }
     }
 
     public bool HasItem(ItemData item, int quantity)
